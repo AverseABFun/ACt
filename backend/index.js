@@ -43,7 +43,7 @@ app.get("/status", (request, response) => {
 
 process.on('SIGINT', function () {
     casedb.close();
-    process.exit(1);
+    process.exit(0);
 });
 process.on('exit', function () {
     casedb.close();
