@@ -24,6 +24,7 @@
   "homepage": "https://github.com/AverseABFun/ACt#readme",
   "dependencies": {
     "express": "^4.18.2",
+    "open-location-code": "^1.0.3",
     "sqlite3": "^5.1.7"
   }
 }
