@@ -5,19 +5,7 @@ const sqlite3 = require('sqlite3');
 const process = require('process');
 const fs = require('fs');
 const assert = require('assert');
-const OpenLocationCode = require('openlocationcode');
-
-function validatePlusCode(plusCode) {
-    const olc = new OpenLocationCode.OpenLocationCode();
-
-    try {
-        olc.decode(plusCode);
-    } catch (error) {
-        return false;
-    }
-
-    return true;
-}
+const OpenLocationCode = require('open-location-code');
 
 let casedb = new sqlite3.Database('./db/case.db', (err) => {
     if (err) {
@@ -41,7 +29,7 @@ app.use(express.json());
 const PORT = process.env.PORT || 3000;
 
 function newResult(location, time, positiveResult) {
-    casedb.run('INSERT INTO cases(loc, casetime, posresult) VALUES (?), (?), (?)', [location, time, positiveResult], (err) => {
+    casedb.run('INSERT INTO cases(loc, casetime, posresult) VALUES (?, ?, ?)', [location, time, positiveResult], (err) => {
         if (err) {
             return console.error(err.message);
         }
@@ -77,7 +65,7 @@ app.post("/newCase", (request, response) => {
         assert(reqJson.cases.length==reqJson.numCases);
         for (let i = 0; i<reqJson.numCases; i++) {
             assert(reqJson.cases[i].plusCode instanceof String);
-            assert(validatePlusCode(reqJson.cases[i].plusCode));
+            assert((new OpenLocationCode.OpenLocationCode).isFull(reqJson.cases[i].plusCode));
             assert(reqJson.cases[i].time instanceof Number);
             assert(reqJson.cases[i].time > 0);
             assert(reqJson.cases[i].positiveResult instanceof Boolean);
