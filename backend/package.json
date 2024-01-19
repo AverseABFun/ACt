@@ -1,0 +1,29 @@
+{
+  "name": "act-backend",
+  "version": "0.0.1-alpha0",
+  "description": "The backend for ACt(Another COVID-19 tracker).",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AverseABFun/ACt.git"
+  },
+  "keywords": [
+    "act",
+    "backend",
+    "covid",
+    "covid-tracker"
+  ],
+  "author": "Arthur Beck",
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/AverseABFun/ACt/issues"
+  },
+  "homepage": "https://github.com/AverseABFun/ACt#readme",
+  "dependencies": {
+    "express": "^4.18.2",
+    "sqlite3": "^5.1.7"
+  }
+}
