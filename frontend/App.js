@@ -3,10 +3,10 @@ import { StyleSheet, Text, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
-function HomePage() {
+function MapPage() {
   return (
     <View style={styles.container}>
-      <Text>Home</Text>
+      <Text>Map</Text>
       <StatusBar style="auto" />
     </View>
   );
@@ -17,7 +17,7 @@ export default function App() {
   return (
     <NavigationContainer>
       <Tab.Navigator>
-        <Tab.Screen name="Home" component={HomePage} />
+        <Tab.Screen name="Map" component={MapPage} />
       </Tab.Navigator>
     </NavigationContainer>
   );
