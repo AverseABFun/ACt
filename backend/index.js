@@ -28,12 +28,12 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
-function newResult(location, time, positiveResult) {
-    casedb.run('INSERT INTO cases(loc, casetime, posresult) VALUES (?, ?, ?)', [location, time, positiveResult], (err) => {
+function newResult(location, time, diseaseguess) {
+    casedb.run('INSERT INTO cases(loc, casetime, diseaseguess) VALUES (?, ?, ?)', [location, time, diseaseguess], (err) => {
         if (err) {
             return console.error(err.message);
         }
-        console.log(`Just recieved result at location ${location} from time ${time}, with a ${positiveResult ? "positive" : "negative"} test result!`);
+        console.log(`Just recieved result at location ${location} from time ${time}, with a guess of ${diseaseguess}!`);
     });
 }
 
@@ -68,7 +68,7 @@ app.post("/newCase", (request, response) => {
             assert((new OpenLocationCode.OpenLocationCode).isFull(reqJson.cases[i].plusCode));
             assert(reqJson.cases[i].time instanceof Number);
             assert(reqJson.cases[i].time > 0);
-            assert(reqJson.cases[i].positiveResult instanceof Boolean);
+            assert(reqJson.cases[i].diseaseGuess instanceof String);
         }
     } catch (e) {
         response.write({
@@ -79,7 +79,7 @@ app.post("/newCase", (request, response) => {
         return;
     }
     for (let i = 0; i<reqJson.numCases; i++) {
-        newResult(reqJson.cases[i].plusCode, reqJson.cases[i].time, reqJson.cases[i].positiveResult);
+        newResult(reqJson.cases[i].plusCode, reqJson.cases[i].time, reqJson.cases[i].diseaseGuess);
     }
     response.write({
         "error": false,
