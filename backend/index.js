@@ -53,7 +53,15 @@ app.get("/status", (request, response) => {
 app.post("/newCase", (request, response) => {
     var reqJson = {};
     try {
-        reqJson = request.body;
+        reqJson = JSON.parse(request.body);
+    } catch (e) {
+        response.write({
+            "error": true,
+            "errorText": "invalid json"
+        });
+        return;
+    }
+    try {
         if (reqJson == {}) {
             response.write({
                 "error": true,
