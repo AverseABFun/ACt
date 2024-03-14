@@ -36,3 +36,6 @@ yarn-error.*
 
 # database files
 *.db
+
+# environment variables
+.env
