@@ -23,5 +23,5 @@ Description: This endpoint allows you to get the number of cases for each diseas
 
 ### Response:
 - `cases` (array): An array of objects with the following keys
-- - `disease_guess` (string): The guess of the disease.
-- - `count` (integer): The number of cases for the disease guess.
+    - `disease_guess` (string): The guess of the disease.
+    - `count` (integer): The number of cases for the disease guess.
