@@ -166,11 +166,11 @@ function aggregateCDCData() {
                 if (val["geocode"]) {
                     val["location"] = Geojson.parse(val["geocode"]);
                 }
-                if (val["label"] && !kindsOfDiseases.includes(val["label"])) {
+                if (val["label"] != "" && !kindsOfDiseases.includes(val["label"])) {
                     kindsOfDiseases.push(val["label"]);
                 }
             } 
-            //console.log(JSON.stringify(kindsOfDiseases))
+            console.log(kindsOfDiseases)
             data = {
                 "week": weekNumber,
                 data: data,

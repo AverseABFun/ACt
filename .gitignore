@@ -39,3 +39,6 @@ yarn-error.*
 
 # environment variables
 .env
+
+# for local things that don't need to be pushed(i.e. a CDC data query script)
+*.local.js
