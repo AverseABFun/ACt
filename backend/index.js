@@ -6,8 +6,10 @@ const process = require('process');
 const fs = require('fs');
 const assert = require('assert');
 const request = require('request');
-const dotenv = require('dotenv').config();
-import {Geojson} from 'geojson-parser-js';
+const dotenv = require('dotenv');
+const { URL } = require('url');
+const Geojson = require('geojson-parser-js').Geojson;
+dotenv.config();
 
 let casedb = new sqlite3.Database('./db/case.db', (err) => {
     if (err) {
@@ -48,43 +50,98 @@ var CDCData = [];
 
 function aggregateCDCData() {
     const weekNumber = currentWeekNumber(new Date());
-    var earlyWeek = weekNumber-5;
+    var earlyWeek = weekNumber-8;
     const year = new Date().getFullYear();
     var data = [];
     var completedRequest = false;
     if (earlyWeek < 1) {
         earlyWeek = 52+earlyWeek;
-        request.get('https://data.cdc.gov/resource/x9gk-5huc.json', {
+        request.get('https://data.cdc.gov/resource/x9gk-5huc.json?$query='+encodeURI(`SELECT
+        \`states\`,
+        \`year\`,
+        \`week\`,
+        \`label\`,
+        \`m1\`,
+        \`m1_flag\`,
+        \`m2\`,
+        \`m2_flag\`,
+        \`m3\`,
+        \`m3_flag\`,
+        \`m4\`,
+        \`m4_flag\`,
+        \`location1\`,
+        \`location2\`,
+        \`sort_order\`,
+        \`geocode\`,
+        \`:@computed_region_hjsp_umg2\`,
+        \`:@computed_region_skr5_azej\`
+      WHERE
+        caseless_one_of(\`year\`, "${year-1}") AND ((\`week\` > ${earlyWeek}) AND (\`week\` < 53))
+      ORDER BY \`sort_order\` ASC NULL LAST LIMIT 999999999999`), {
             "headers": {
-                "X-App-Token": dotenv.get('CDC_APP_TOKEN')
-            },
-            "body": {
-                "$where": `year = ${year-1} AND week > ${earlyWeek} AND week < 53`
+                "X-App-Token": process.env.CDC_APP_TOKEN
             }
         }).on("complete", (_response, body) => {
             data = data.concat(JSON.parse(body));
         });
-        request.get('https://data.cdc.gov/resource/x9gk-5huc.json', {
+        request.get('https://data.cdc.gov/resource/x9gk-5huc.json?$query='+encodeURI(`SELECT
+        \`states\`,
+        \`year\`,
+        \`week\`,
+        \`label\`,
+        \`m1\`,
+        \`m1_flag\`,
+        \`m2\`,
+        \`m2_flag\`,
+        \`m3\`,
+        \`m3_flag\`,
+        \`m4\`,
+        \`m4_flag\`,
+        \`location1\`,
+        \`location2\`,
+        \`sort_order\`,
+        \`geocode\`,
+        \`:@computed_region_hjsp_umg2\`,
+        \`:@computed_region_skr5_azej\`
+      WHERE
+        caseless_one_of(\`year\`, "${year}") AND ((\`week\` > ${earlyWeek}) AND (\`week\` < ${weekNumber}))
+      ORDER BY \`sort_order\` ASC NULL LAST LIMIT 999999999999`), {
             "headers": {
-                "X-App-Token": dotenv.get('CDC_APP_TOKEN')
-            },
-            "body": {
-                "$where": `year = ${year} AND week > 0 AND week < ${weekNumber}`
+                "X-App-Token": process.env.CDC_APP_TOKEN
             }
         }).on("complete", (_response, body) => {
             data = data.concat(JSON.parse(body));
             completedRequest = true;
         });
     } else {
-        request.get('https://data.cdc.gov/resource/x9gk-5huc.json', {
+        request.get('https://data.cdc.gov/resource/x9gk-5huc.json?$query='+encodeURI(`SELECT
+        \`states\`,
+        \`year\`,
+        \`week\`,
+        \`label\`,
+        \`m1\`,
+        \`m1_flag\`,
+        \`m2\`,
+        \`m2_flag\`,
+        \`m3\`,
+        \`m3_flag\`,
+        \`m4\`,
+        \`m4_flag\`,
+        \`location1\`,
+        \`location2\`,
+        \`sort_order\`,
+        \`geocode\`,
+        \`:@computed_region_hjsp_umg2\`,
+        \`:@computed_region_skr5_azej\`
+      WHERE
+        caseless_one_of(\`year\`, "${year}") AND ((\`week\` > ${earlyWeek}) AND (\`week\` < ${weekNumber}))
+      ORDER BY \`sort_order\` ASC NULL LAST LIMIT 999999999999`), {
             "headers": {
-                "X-App-Token": dotenv.get('CDC_APP_TOKEN')
-            },
-            "body": {
-                "$where": `year = ${year} AND week > ${earlyWeek} AND week < ${weekNumber}`
+                "X-App-Token": process.env.CDC_APP_TOKEN
             }
         }).on("complete", (_response, body) => {
             data = data.concat(JSON.parse(body));
+            console.log(body)
             completedRequest = true;
         });
     }
@@ -92,15 +149,24 @@ function aggregateCDCData() {
         if (completedRequest) {
             return;
         } else {
-            setTimeout(checkRequest, 100);
+            setTimeout(waitForRequest, 100);
         }
     }
     waitForRequest();
+    var kindsOfDiseases = [];
     for (var val in data) {
         if (val["geocode"]) {
             val["location"] = Geojson.parse(val["geocode"]);
         }
+        if (val["label"] && !kindsOfDiseases.includes(val["label"])) {
+            kindsOfDiseases.push(val["label"]);
+        }
     } 
+    console.log(kindsOfDiseases)
+    data = {
+        "week": weekNumber,
+        data: data,
+    }
     fs.writeFileSync("./db/cdc_data.json", JSON.stringify(data));
     CDCData = data;
 }
@@ -108,13 +174,6 @@ function aggregateCDCData() {
 casedb.get("SELECT * FROM cases", (err)=>{
     if (err) {
         casedb.run(fs.readFileSync("./db/create_case_table.sql", {encoding: 'ascii'}));
-        if (dotenv.get('CDC_APP_TOKEN') != undefined && fs.existsSync("./db/cdc_data.json")) {
-            aggregateCDCData();
-        } else if (fs.existsSync("./db/cdc_data.json")) {
-            CDCData = fs.readFileSync("./db/cdc_data.json");
-        } else {
-            console.warn("CDC_APP_TOKEN not found in .env, and no cdc_data.json found. CDC data will not be available.");
-        }
     }
 });
 
@@ -123,6 +182,17 @@ const startTime = Date.now();
 
 const app = express ();
 app.use(express.json());
+
+if (process.env.CDC_APP_TOKEN != undefined && !fs.existsSync("./db/cdc_data.json")) {
+    aggregateCDCData();
+} else if (fs.existsSync("./db/cdc_data.json")) {
+    CDCData = fs.readFileSync("./db/cdc_data.json");
+    if (CDCData.week < currentWeekNumber(new Date())) {
+        aggregateCDCData();
+    }
+} else {
+    console.warn("CDC_APP_TOKEN not found in .env, and no cdc_data.json found. CDC data will not be available.");
+}
 
 const PORT = process.env.PORT || 3000;
 
