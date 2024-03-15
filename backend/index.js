@@ -5,7 +5,7 @@ const sqlite3 = require('sqlite3');
 const process = require('process');
 const fs = require('fs');
 const assert = require('assert');
-const request = require('request');
+const request = require('superagent');
 const dotenv = require('dotenv');
 const { URL } = require('url');
 const Geojson = require('geojson-parser-js').Geojson;
@@ -77,13 +77,16 @@ function aggregateCDCData() {
         \`:@computed_region_skr5_azej\`
       WHERE
         caseless_one_of(\`year\`, "${year-1}") AND ((\`week\` > ${earlyWeek}) AND (\`week\` < 53))
-      ORDER BY \`sort_order\` ASC NULL LAST LIMIT 999999999999`), {
-            "headers": {
-                "X-App-Token": process.env.CDC_APP_TOKEN
-            }
-        }).on("complete", (_response, body) => {
-            data = data.concat(JSON.parse(body));
-        });
+      ORDER BY \`sort_order\` ASC NULL LAST LIMIT 999999999999`)
+        )
+            .set("X-App-Token", process.env.CDC_APP_TOKEN)
+            .end((err, res) => {
+                if (err) {
+                    console.error(err);
+                    process.exit(1);
+                }
+                data = data.concat(res.body);
+            })
         request.get('https://data.cdc.gov/resource/x9gk-5huc.json?$query='+encodeURI(`SELECT
         \`states\`,
         \`year\`,
@@ -100,19 +103,35 @@ function aggregateCDCData() {
         \`location1\`,
         \`location2\`,
         \`sort_order\`,
-        \`geocode\`,
-        \`:@computed_region_hjsp_umg2\`,
-        \`:@computed_region_skr5_azej\`
+        \`geocode\`
       WHERE
         caseless_one_of(\`year\`, "${year}") AND ((\`week\` > ${earlyWeek}) AND (\`week\` < ${weekNumber}))
-      ORDER BY \`sort_order\` ASC NULL LAST LIMIT 999999999999`), {
-            "headers": {
-                "X-App-Token": process.env.CDC_APP_TOKEN
+      ORDER BY \`sort_order\` ASC NULL LAST LIMIT 999999999999`)
+      )
+          .set("X-App-Token", process.env.CDC_APP_TOKEN)
+          .end((err, res) => {
+            if (err) {
+                console.error(err);
+                process.exit(1);
             }
-        }).on("complete", (_response, body) => {
-            data = data.concat(JSON.parse(body));
-            completedRequest = true;
-        });
+            data = data.concat(res.body);
+            var kindsOfDiseases = [];
+            for (var val in data) {
+                if (val["geocode"]) {
+                    val["location"] = Geojson.parse(val["geocode"]);
+                }
+                if (val["label"] && !kindsOfDiseases.includes(val["label"])) {
+                    kindsOfDiseases.push(val["label"]);
+                }
+            } 
+            //console.log(JSON.stringify(kindsOfDiseases))
+            data = {
+                "week": weekNumber,
+                data: data,
+            }
+            fs.writeFileSync("./db/cdc_data.json", JSON.stringify(data));
+            CDCData = data;
+          })
     } else {
         request.get('https://data.cdc.gov/resource/x9gk-5huc.json?$query='+encodeURI(`SELECT
         \`states\`,
@@ -130,45 +149,36 @@ function aggregateCDCData() {
         \`location1\`,
         \`location2\`,
         \`sort_order\`,
-        \`geocode\`,
-        \`:@computed_region_hjsp_umg2\`,
-        \`:@computed_region_skr5_azej\`
+        \`geocode\`
       WHERE
         caseless_one_of(\`year\`, "${year}") AND ((\`week\` > ${earlyWeek}) AND (\`week\` < ${weekNumber}))
-      ORDER BY \`sort_order\` ASC NULL LAST LIMIT 999999999999`), {
-            "headers": {
-                "X-App-Token": process.env.CDC_APP_TOKEN
+      ORDER BY \`sort_order\` ASC NULL LAST LIMIT 999999999999`)
+      )
+          .set("X-App-Token", process.env.CDC_APP_TOKEN)
+          .end((err, res) => {
+            if (err) {
+                console.error(err);
+                process.exit(1);
             }
-        }).on("complete", (_response, body) => {
-            data = data.concat(JSON.parse(body));
-            console.log(body)
-            completedRequest = true;
-        });
+            data = data.concat(res.body);
+            var kindsOfDiseases = [];
+            for (var val in data) {
+                if (val["geocode"]) {
+                    val["location"] = Geojson.parse(val["geocode"]);
+                }
+                if (val["label"] && !kindsOfDiseases.includes(val["label"])) {
+                    kindsOfDiseases.push(val["label"]);
+                }
+            } 
+            //console.log(JSON.stringify(kindsOfDiseases))
+            data = {
+                "week": weekNumber,
+                data: data,
+            }
+            fs.writeFileSync("./db/cdc_data.json", JSON.stringify(data));
+            CDCData = data;
+          })
     }
-    function waitForRequest() {
-        if (completedRequest) {
-            return;
-        } else {
-            setTimeout(waitForRequest, 100);
-        }
-    }
-    waitForRequest();
-    var kindsOfDiseases = [];
-    for (var val in data) {
-        if (val["geocode"]) {
-            val["location"] = Geojson.parse(val["geocode"]);
-        }
-        if (val["label"] && !kindsOfDiseases.includes(val["label"])) {
-            kindsOfDiseases.push(val["label"]);
-        }
-    } 
-    console.log(kindsOfDiseases)
-    data = {
-        "week": weekNumber,
-        data: data,
-    }
-    fs.writeFileSync("./db/cdc_data.json", JSON.stringify(data));
-    CDCData = data;
 }
 
 casedb.get("SELECT * FROM cases", (err)=>{

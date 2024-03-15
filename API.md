@@ -12,10 +12,11 @@ Description: This endpoint allows you to create a new case with the provided dat
 - `disease_guess` (string): The guess of the disease for the case.
 
 ### Response:
+- `error` (boolean): If an error occurred
 - `status` (string): The status of the request.
 - `message` (string): A message indicating the result of the request.
 
-## Get Number of Cases by Disease Guess
+## Get Number of Cases by Disease
 
 Endpoint: `/api/cases/count`
 Method: `GET`
