@@ -13,6 +13,7 @@ Description: This endpoint allows you to create a new case with the provided dat
 
 ### Response:
 - `error` (boolean): If an error occurred
+- `queued` (boolean): If the request was queued to run, currently only used when CDC data is being updated(also note the the error field will also be set under this case)
 - `status` (string): The status of the request.
 - `message` (string): A message indicating the result of the request.
 

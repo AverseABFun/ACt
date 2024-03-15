@@ -48,7 +48,10 @@ function currentWeekNumber(date) {
   
 var CDCData = [];
 
+var updatingCDCData = false;
+var queuedRequests = [];
 function aggregateCDCData() {
+    updatingCDCData = true;
     const weekNumber = currentWeekNumber(new Date());
     var earlyWeek = weekNumber-8;
     const year = new Date().getFullYear();
@@ -131,6 +134,10 @@ function aggregateCDCData() {
             }
             fs.writeFileSync("./db/cdc_data.json", JSON.stringify(data));
             CDCData = data;
+            updatingCDCData = false;
+            for (var item of queuedRequests) {
+                item();
+            }
           })
     } else {
         request.get('https://data.cdc.gov/resource/x9gk-5huc.json?$query='+encodeURI(`SELECT
@@ -177,6 +184,10 @@ function aggregateCDCData() {
             }
             fs.writeFileSync("./db/cdc_data.json", JSON.stringify(data));
             CDCData = data;
+            updatingCDCData = false
+            for (var item of queuedRequests) {
+                item();
+            }
           })
     }
 }
@@ -219,22 +230,32 @@ app.listen(PORT, () => {
     console.log("Server Listening on port", PORT);
 });
 
-app.get("/status", (request, response) => {
-    const status = {
+app.get("/status", (_request, response) => {
+    if (CDCData.week < currentWeekNumber(new Date())) {
+        aggregateCDCData();
+    }
+    var status = {
         "status": "Running",
         "uptime": (Date.now()-startTime)
     };
+    if (updatingCDCData) {
+        status.status = "Updating CDC Data";
+    }
 
     response.send(status);
 });
 
 app.post("/newCase", (request, response) => {
+    if (CDCData.week < currentWeekNumber(new Date())) {
+        aggregateCDCData();
+    }
     var reqJson = {};
     try {
         reqJson = JSON.parse(request.body);
     } catch (e) {
         response.write({
             "error": true,
+            "queued": false,
             "errorText": "invalid json"
         });
         return;
@@ -243,6 +264,7 @@ app.post("/newCase", (request, response) => {
         if (reqJson == {}) {
             response.write({
                 "error": true,
+                "queued": false,
                 "errorText": "invalid json"
             });
             return;
@@ -258,16 +280,28 @@ app.post("/newCase", (request, response) => {
     } catch (e) {
         response.write({
             "error": true,
+            "queued": false,
             "errorText": "invalid json values",
             "valuesWritten": []
         });
         return;
     }
-    for (let i = 0; i<reqJson.numCases; i++) {
-        newResult(reqJson.cases[i].location, reqJson.cases[i].time, reqJson.cases[i].diseaseGuess);
+    if (updatingCDCData) {
+        queuedRequests.push(function(){
+            for (let i = 0; i<reqJson.numCases; i++) {
+                newResult(reqJson.cases[i].location, reqJson.cases[i].time, reqJson.cases[i].diseaseGuess);
+            }
+        });
+        response.write({
+            "error": true,
+            "queued": true,
+            "errorText": "updating CDC data"
+        });
+        return;
     }
     response.write({
         "error": false,
+        "queued": false,
         "errorText": "ok",
         "valuesWritten": reqJson.cases
     });
