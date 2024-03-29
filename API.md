@@ -1,4 +1,4 @@
-# ADt(Another Disease tracker) API documentation
+# YADt(Yet Another Disease tracker) API documentation
 
 ## Create New Case
 
